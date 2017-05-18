@@ -1,9 +1,11 @@
+// swift-tools-version:3.1
+
 import PackageDescription
 
 let package = Package(
-    name: "gzip-vapor",
+    name: "gzip-provider",
     dependencies: [
-    	.Package(url: "https://github.com/Zewo/gzip.git", majorVersion: 0, minor: 8),
-    	.Package(url: "https://github.com/vapor/vapor.git", majorVersion: 0, minor: 17)
-    ]
+      .Package(url: "https://github.com/pruthvikar/GZIP.git", "1.0.0-beta.1"),
+      .Package(url: "https://github.com/vapor/vapor.git", majorVersion: 2)
+  ]
 )
