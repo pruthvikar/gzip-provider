@@ -1,6 +1,6 @@
 import HTTP
 import Vapor
-import gzip
+import GZIP
 import Foundation
 
 public enum GzipMiddlewareError: Error {
@@ -31,7 +31,7 @@ public struct GzipClientMiddleware: Middleware {
         case .chunked(let chunker):
             response.body = .chunked({ (stream: ChunkStream) in
                 let gzipStream = try GzipStream(mode: .uncompress, stream: stream.raw)
-                try chunker(ChunkStream(stream: gzipStream))
+                try chunker(ChunkStream(gzipStream))
             })
         }
         return response
@@ -68,7 +68,7 @@ public struct GzipServerMiddleware: Middleware {
         case .chunked(let chunker):
             response.body = .chunked({ (stream: ChunkStream) in
                 let gzipStream = try GzipStream(mode: .compress, stream: stream.raw)
-                try chunker(ChunkStream(stream: gzipStream))
+                try chunker(ChunkStream(gzipStream))
             })
         }
         return response

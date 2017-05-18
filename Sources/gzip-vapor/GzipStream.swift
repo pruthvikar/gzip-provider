@@ -1,87 +1,32 @@
-import Core
 import Transport
-import gzip
+import GZIP
 import Foundation
 
-public final class GzipStream: Transport.Stream {
-    
-    public var peerAddress: String {
-        return stream.peerAddress
-    }
-    
-    let mode: GzipMode
-    private let processor: GzipProcessor
-    let stream: Transport.Stream
-    
-    init(mode: GzipMode, stream: Transport.Stream) throws {
-        self.mode = mode
-        self.processor = mode.processor()
-        try self.processor.initialize()
-        self.stream = stream
-    }
-    
-    public var closed: Bool = false
-    
-    public func setTimeout(_ timeout: Double) throws {
-        try stream.setTimeout(timeout)
-    }
-    
-    public func close() throws {
-        processor.close()
-        try stream.close()
-        self.closed = true
-    }
+public final class GzipStream: WriteableStream {
+  let mode: GzipMode
+  private let processor: GzipProcessor
+  let stream: WriteableStream
+  public var isClosed: Bool = false
 
-    public func flush() throws {
-        if let tail = try processor.safeFlush() {
-            try stream.send(tail.byteArray())
-        }
-        try stream.flush()
-    }
+  init(mode: GzipMode, stream: WriteableStream) throws {
+    self.mode = mode
+    self.processor = mode.processor()
+    try self.processor.initialize()
+    self.stream = stream
+  }
 
-    public func send(_ bytes: Bytes) throws {
-        let data = try processor.process(data: Data(bytes).toNSData(), isLast: false)
-        try stream.send(data.byteArray())
-    }
-    
-    public func receive(max: Int) throws -> Bytes {
-        if stream.closed {
-            if let tail = try processor.safeFlush() {
-                return try tail.byteArray()
-            } else {
-                return []
-            }
-        }
-        let raw = try stream.receive(max: max)
-        let data = try processor.process(data: Data(raw).toNSData(), isLast: stream.closed)
-        if stream.closed {
-            processor.close()
-            self.closed = true
-        }
-        return try data.byteArray()
-    }
+  public func write(max: Int, from buffer: Bytes) throws -> Int {
+    let data = try processor.process(data: Data(buffer), isLast: false)
+    return try stream.write(data.makeBytes())
+  }
+
+  public func setTimeout(_ timeout: Double) throws {
+    try stream.setTimeout(timeout)
+  }
+
+  public func close() throws {
+    processor.close()
+    try stream.close()
+    isClosed = true
+  }
 }
-
-extension NSData {
-    public func toFoundationData() -> Foundation.Data {
-        #if os(Linux)
-        return Data._unconditionallyBridgeFromObjectiveC(self)
-        #else
-        return Data(referencing: self)
-        #endif
-    }
-}
-
-extension NSData {
-    func byteArray() throws -> [UInt8] {
-        return try self.toFoundationData().makeBytes()
-    }
-}
-
-#if os(Linux)
-    extension Data {
-        init(_ bytes: [UInt8]) {
-            self = Data(bytes: bytes)
-        }
-    }
-#endif
